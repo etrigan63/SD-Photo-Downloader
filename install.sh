@@ -66,8 +66,11 @@ install_script_based() {  # <label> <scripts-dir>
   cat > "$file" <<EOF
 #!/bin/bash
 # Right-click a mounted SD card folder -> Scripts -> SD Photo Downloader.
-# Any selected folder(s) are treated as the card path(s).
-exec "$SCRIPT_DEST" --card "\$@"
+# Any selected folder(s) are treated as the card path(s). Resolved to
+# absolute paths since file managers may pass relative ones.
+args=()
+for p in "\$@"; do args+=( "\$(realpath -m -- "\$p")" ); done
+exec "$SCRIPT_DEST" --card "\${args[@]}"
 EOF
   chmod +x "$file"
   echo "Installed $label script to: $file"

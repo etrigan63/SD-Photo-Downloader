@@ -76,6 +76,11 @@ die() { log "ERROR: $*" >&2; notify "Failed: $*"; exit 1; }
 
 expand_home() { case "$1" in "~/"*) printf '%s/%s' "$HOME" "${1#\~/}";; *) printf '%s' "$1";; esac; }
 
+# Resolve a (possibly relative) path against the current working directory.
+# File managers hand scripts the selected folder as a relative path and set
+# cwd to its parent, so always anchor to absolute before we cd out of it.
+abs_path() { case "$1" in /*) printf '%s' "$1";; *) printf '%s/%s' "$(pwd)" "$1";; esac; }
+
 usage() {
   sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
   echo
@@ -192,7 +197,14 @@ load_config() {
 detect_card() {
   local vol name count v found
 
-  [ -n "$ARG_CARD" ] && { SD_PATH="$ARG_CARD"; return 0; }
+  if [ -n "$ARG_CARD" ]; then
+    if [ -d "$ARG_CARD" ]; then
+      SD_PATH="$ARG_CARD"
+      return 0
+    fi
+    log "WARN: --card argument is not a directory ($ARG_CARD); falling back to auto-detection"
+    ARG_CARD=""
+  fi
 
   if [ "$SD_CARD" != "auto" ]; then
     SD_PATH="$(expand_home "$SD_CARD")"
@@ -451,19 +463,19 @@ maybe_eject() {
 while [ $# -gt 0 ]; do
   case "$1" in
     -c|--config) [ $# -ge 2 ] || die "--config needs a file argument"; CONFIG_FILE="$2"; shift 2;;
-    --card)      [ $# -ge 2 ] || die "--card needs a path argument"; ARG_CARD="$2"; shift 2;;
+    --card)      [ $# -ge 2 ] || die "--card needs a path argument"; ARG_CARD="$(abs_path "$2")"; shift 2;;
     --dry-run)   DRY_RUN=yes; shift;;
     --no-eject)  NO_EJECT=yes; shift;;
     -h|--help)   usage; exit 0;;
     -*)          die "unknown option: $1 (see --help)";;
-    *)           ARG_CARD="$1"; shift;;   # file-manager scripts pass dropped folders here
+    *)           ARG_CARD="$(abs_path "$1")"; shift;;   # file-manager scripts pass dropped folders here
   esac
 done
 
 # Belt and suspenders: if a file manager delivered folders on stdin, use the first.
 if [ -z "$ARG_CARD" ] && [ ! -t 0 ]; then
   while IFS= read -r line; do
-    if [ -n "$line" ] && [ -d "$line" ]; then ARG_CARD="$line"; break; fi
+    if [ -n "$line" ] && [ -d "$line" ]; then ARG_CARD="$(abs_path "$line")"; break; fi
   done
 fi
 
