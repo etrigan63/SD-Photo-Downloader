@@ -80,9 +80,15 @@ die() { log "ERROR: $*" >&2; notify "Failed: $*"; exit 1; }
 expand_home() { case "$1" in "~/"*) printf '%s/%s' "$HOME" "${1#\~/}";; *) printf '%s' "$1";; esac; }
 
 # Resolve a (possibly relative) path against the current working directory.
-# File managers hand scripts the selected folder as a relative path and set
-# cwd to its parent, so always anchor to absolute before we cd out of it.
-abs_path() { case "$1" in /*) printf '%s' "$1";; *) printf '%s/%s' "$(pwd)" "$1";; esac; }
+# File managers hand scripts the selected folder as a relative path (and set
+# cwd to its parent), or even a file:// URI; always anchor to absolute before
+# we cd out of it.
+abs_path() {
+  local p="$1"
+  p="${p#file://}"
+  p="$(printf '%b' "${p//%/\\x}")"     # decode percent-escapes (%20 -> space)
+  case "$p" in /*) printf '%s' "$p";; *) printf '%s/%s' "$(pwd)" "$p";; esac
+}
 
 usage() {
   sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
