@@ -1,0 +1,81 @@
+# SD Photo Downloader - configuration
+# ---------------------------------------------------------------
+# Copy this file to a location of your choice and select it, or install it to:
+#
+#     ~/.sd-photo-downloader/config
+#
+# The script looks for the config in this order:
+#   1. --config FILE on the command line
+#   2. $SD_CARD_DOWNLOADER_CONFIG
+#   3. ./config (directory the script lives in)
+#   4. the install location above
+#
+# Format: KEY=VALUE, one per line. Lines starting with # are comments.
+# Values may be wrapped in double or single quotes. "~/" is expanded.
+
+# Where imported photos/videos go. Date subfolders (see FOLDER_PATTERN) are
+# created under this directory automatically.
+TARGET_DIR=/home/guru/Pictures/photo-ingest
+
+# Second destination: every imported file is also copied here under the same
+# date subfolder structure, with the same renamed filename as TARGET_DIR.
+# Leave empty to disable the backup copy.
+BACKUP_DIR=/home/guru/Videos/video-ingest
+
+# Path to exiftool. If empty/unset, the script checks your PATH first,
+# then /usr/bin/vendor_perl/exiftool and /usr/bin/exiftool.
+EXIFTOOL=/usr/bin/vendor_perl/exiftool
+
+# Where per-camera image-number counters and the run log are kept.
+STATE_DIR=~/.sd-photo-downloader
+
+# Subfolder pattern inside TARGET_DIR / BACKUP_DIR.
+# Supports exiftool style (%Y, %m, %d ...) and brace style ({YYYY}, ...).
+# Examples:
+#   %Y/%Y-%m-%d              ->  2026/2026-08-29   (default)
+#   %Y/%m/%d                 ->  2026/08/29
+#   {YYYY}/{YYYY}-{MM}-{DD}  ->  2026/2026-08-29
+FOLDER_PATTERN=%Y/%Y-%m-%d
+
+# Image number is zero-padded to this many digits: 0001, 0002, ...,
+# or 5099 for a shot number already that large.
+COUNTER_DIGITS=4
+
+# First image number to use if no counter exists yet.
+COUNTER_START=1
+
+# Where the "<image number>" part of the filename comes from:
+#   exif    -> the digits immediately before the extension in the camera
+#              file name ("_DSF5099.RAF" gives 5099). The RAW and HEIF of a
+#              pair carry the same digits, so both cards stay in sync.
+#   counter -> sequential number tracked by this tool (per model or shared).
+# Files with no trailing digits in their name always fall back to the counter.
+NUMBER_SOURCE=exif
+
+# Track a separate number sequence per camera model (yes) or one shared
+# sequence across all cameras (no).
+COUNTER_PER_MODEL=yes
+
+# File extensions to look for on the card (space separated).
+PHOTO_EXTS="jpg jpeg jpe tif tiff nef cr2 cr3 arw dng orf rw2 raf pef srf sr2 rwl raw heic heif hif png gif bmp"
+VIDEO_EXTS="mp4 mov m4v avi mts m2ts 3gp mod"
+
+# Where to look for the card:
+#   auto            -> find the volume with a DCIM folder under /media,
+#                      /media/$USER, /run/media/$USER or /mnt
+#   /run/media/guru/CANON  -> always use this mount point
+# The --card argument (or a folder dropped on a file-manager script)
+# overrides this.
+SD_CARD=auto
+
+# Log file for all runs. Defaults to $STATE_DIR/run.log.
+LOG_FILE=~/.sd-photo-downloader/run.log
+
+# Unmount the card when a run finishes successfully (via udisksctl, falling
+# back to umount). The --no-eject flag overrides this for a single run.
+EJECT_CARD=yes
+
+# Show desktop notifications (notify-send) for start, result and errors.
+# Handy when triggered from a file-manager script or launcher with no
+# visible terminal.
+NOTIFY=yes
