@@ -7,6 +7,8 @@
 #   * symlinks sd-photo-download into ~/.local/bin/ (if it exists)
 #   * detects the installed file managers and wires up a right-click
 #     "SD Photo Downloader" action for each one found.
+#   * pins the "Computer" (all drives) entry into the GNOME Files sidebar
+#     via the shared GTK bookmarks file, if it is missing.
 #
 # Supported file managers:
 #   - GNOME Files (nautilus)   -> ~/.local/share/nautilus/scripts/
@@ -179,6 +181,24 @@ if [ "$INSTALLED" -eq 0 ]; then
   echo "No supported file manager detected. You can still run the import from a"
   echo "terminal: $SCRIPT_DEST [--card /path/to/card] [--dry-run]"
 fi
+
+# ---------------------------------------------------------------------------
+# Optional: pin "Computer" (all drives) in the GNOME Files sidebar. Lives in
+# the shared GTK bookmarks file, which other GTK file managers honour too, so
+# it is harmless to ensure everywhere.
+# ---------------------------------------------------------------------------
+install_computer_bookmark() {
+  local f="$HOME/.config/gtk-3.0/bookmarks"
+  mkdir -p "$(dirname -- "$f")"
+  touch "$f"
+  if grep -q '^computer:///' "$f" 2>/dev/null; then
+    echo "Computer sidebar bookmark already present: $f"
+  else
+    printf '%s\n' "computer:/// Computer" >>"$f"
+    echo "Added Computer entry to the sidebar bookmarks: $f"
+  fi
+}
+install_computer_bookmark
 
 echo
 echo "Next steps:"
