@@ -8,11 +8,14 @@ All features are preserved; the macOS-specific parts (Automator workflow,
 `osascript`, `diskutil`, `/Volumes`) were replaced with Linux equivalents
 (`notify-send`, `udisksctl`/`umount`, `/media | /run/media | /mnt`).
 
-* **Target folder** — photos copied to `TARGET_DIR/{YYYY}/{YYYY-MM-DD}` and
+* **Photo folder** — photos copied to `TARGET_DIR/{YYYY}/{YYYY-MM-DD}` and
   renamed to `{Camera Model}-{YYYYMMDD}-{image number}.ext`
   (e.g. `Canon-EOS-R5-20260829-0001.JPG`).
-* **Backup folder** — a second copy of each file under the same date
-  subfolder structure, using the same renamed filenames as the target.
+* **Video folder** — videos copied to `VIDEO_DIR/{YYYY}/{YYYY-MM-DD}` with
+  the same rename scheme.
+* **Backup folders** — `BACKUP_DIR` / `VIDEO_BACKUP_DIR` receive a second
+  copy of each photo / video under the same date subfolder structure, using
+  the same renamed filenames as the primary folders.
 * The image number is taken from the camera file name (the digits just before
   the extension, e.g. `_DSF5099.RAF` → `5099`), so a RAW + HEIF pair keeps the
   same number across both cards. Files without trailing digits in their name
@@ -64,8 +67,10 @@ Edit `~/.sd-photo-downloader/config` (the format is `KEY=VALUE`, see
 
 | Key | Purpose |
 |-----|---------|
-| `TARGET_DIR` | Destination photo library (subfolders auto-created) |
-| `BACKUP_DIR` | Optional second copy (leave blank to disable) |
+| `TARGET_DIR` | Where **photos** go (subfolders auto-created) |
+| `VIDEO_DIR` | Where **videos** go (defaults to `TARGET_DIR` if blank) |
+| `BACKUP_DIR` | Optional second copy of **photos** (leave blank to disable) |
+| `VIDEO_BACKUP_DIR` | Optional second copy of **videos** (leave blank to disable) |
 | `EXIFTOOL` | Path to exiftool (auto-detected if blank) |
 | `FOLDER_PATTERN` | Subfolder layout, e.g. `%Y/%Y-%m-%d` or `{YYYY}/{YYYY-MM-DD}` |
 | `COUNTER_DIGITS` | Zero-padding for the image number (default 4) |

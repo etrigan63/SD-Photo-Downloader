@@ -5,8 +5,9 @@
 #
 #   * Locates the card automatically (config SD_CARD=auto or --card PATH)
 #   * Reads EXIF date + camera model with exiftool
-#   * Copies renamed files to TARGET_DIR and a second copy to BACKUP_DIR,
-#     both under date subfolders like 2026/2026-08-29
+#   * Photos go to TARGET_DIR, videos to VIDEO_DIR; a second copy of each
+#     goes to BACKUP_DIR / VIDEO_BACKUP_DIR, all under date subfolders
+#     like 2026/2026-08-29
 #   * Renames to:  <camera-model>-<YYYYMMDD>-<image number>.<ext>
 #   * Image numbers are sequential, tracked per camera model in a state dir
 #
@@ -36,7 +37,9 @@ CONFIG_FILE="${SD_CARD_DOWNLOADER_CONFIG:-}"
 [ -z "$CONFIG_FILE" ] && CONFIG_FILE="$HOME/.sd-photo-downloader/config"
 
 TARGET_DIR=""
+VIDEO_DIR=""
 BACKUP_DIR=""
+VIDEO_BACKUP_DIR=""
 EXIFTOOL=""
 STATE_DIR=""
 FOLDER_PATTERN="%Y/%Y-%m-%d"
@@ -104,6 +107,12 @@ sanitize_token() {
   printf '%s' "$s"
 }
 
+# Is this extension in a space-separated list?
+in_ext_list() { # ext list...
+  case " $2 " in *" $1 "*) return 0;; esac
+  return 1
+}
+
 # Format FOLDER_PATTERN for a date. Accepts both exiftool style (%Y) and
 # brace style ({YYYY}) tokens.
 fmt_subdir() {
@@ -159,7 +168,9 @@ load_config() {
     val="${val%\'}"; val="${val#\'}"
     case "$key" in
       TARGET_DIR)         TARGET_DIR="$(expand_home "$val")";;
+      VIDEO_DIR)          VIDEO_DIR="$(expand_home "$val")";;
       BACKUP_DIR)         BACKUP_DIR="$(expand_home "$val")";;
+      VIDEO_BACKUP_DIR)   VIDEO_BACKUP_DIR="$(expand_home "$val")";;
       EXIFTOOL)           EXIFTOOL="$(expand_home "$val")";;
       STATE_DIR)          STATE_DIR="$(expand_home "$val")";;
       FOLDER_PATTERN)     FOLDER_PATTERN="$val";;
@@ -177,6 +188,9 @@ load_config() {
   done <"$CONFIG_FILE"
 
   [ -n "$TARGET_DIR" ] || die "TARGET_DIR is not set in config: $CONFIG_FILE"
+  # Videos default to the same places as photos unless explicitly split.
+  [ -n "$VIDEO_DIR" ] || VIDEO_DIR="$TARGET_DIR"
+  [ -n "$VIDEO_BACKUP_DIR" ] || VIDEO_BACKUP_DIR="$BACKUP_DIR"
   [ -n "$EXIFTOOL" ] || {
     if command -v exiftool >/dev/null 2>&1; then EXIFTOOL="$(command -v exiftool)";
     elif [ -x /usr/bin/vendor_perl/exiftool ]; then EXIFTOOL=/usr/bin/vendor_perl/exiftool;
@@ -280,7 +294,7 @@ scan_max_number() { # full-model-token -> highest existing image number in TARGE
   while IFS= read -r line; do
     num="$(printf '%s\n' "$line" | sed 's/.*-\([0-9][0-9]*\)\.[^.]*$/\1/')"
     [ -n "$num" ] && [ "$num" -gt "$best" ] 2>/dev/null && best=$num
-  done < <(find "$TARGET_DIR" -type f -name "$pat" 2>/dev/null)
+  done < <(find "$TARGET_DIR" "$VIDEO_DIR" -type f -name "$pat" 2>/dev/null)
   printf '%s' "$best"
 }
 
@@ -310,14 +324,16 @@ bump_counter() {
 main() {
   local f ext h exif_dt year month day hh min ss model
   local token key num numpad name target backup copy_count skip_count
-  local exifnum used_counter prev prevrel
+  local exifnum used_counter prev prevrel primary_dir backup_root
   copy_count=0; skip_count=0
 
   cd "$HOME" || true   # cd out of the mount path so the card can be unmounted
 
   mkdir -p "$STATE_DIR" "$TARGET_DIR" 2>/dev/null
   mkdir -p "${LOG_FILE%/*}" 2>/dev/null
+  [ -n "$VIDEO_DIR" ] && mkdir -p "$VIDEO_DIR"
   [ -n "$BACKUP_DIR" ] && mkdir -p "$BACKUP_DIR"
+  [ -n "$VIDEO_BACKUP_DIR" ] && mkdir -p "$VIDEO_BACKUP_DIR"
 
   if [ "$DRY_RUN" = yes ]; then
     WORK_STATE="$(mktemp -d "${TMPDIR:-/tmp}/sd-downloader.XXXXXX")"
@@ -340,13 +356,23 @@ main() {
   [ "${#name_args[@]}" -gt 0 ] || die "no file extensions configured"
 
   log "SD card:   $SD_PATH"
-  log "Target:    $TARGET_DIR"
-  [ -n "$BACKUP_DIR" ] && log "Backup:    $BACKUP_DIR"
+  log "Photos:    $TARGET_DIR"
+  [ -n "$VIDEO_DIR" ] && log "Videos:    $VIDEO_DIR"
+  [ -n "$BACKUP_DIR" ] && log "Photo bkup:$BACKUP_DIR"
+  [ -n "$VIDEO_BACKUP_DIR" ] && log "Video bkup:$VIDEO_BACKUP_DIR"
   log "Scanning for photos/videos..."
   notify "Importing from $(basename "$SD_PATH")..."
 
   while IFS= read -r f; do
     ext="${f##*.}"; ext="$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')"
+
+    # Route by type: photos -> TARGET_DIR, videos -> VIDEO_DIR. Backup copy
+    # mirrors the choice via BACKUP_DIR / VIDEO_BACKUP_DIR.
+    if in_ext_list "$ext" "$VIDEO_EXTS"; then
+      primary_dir="$VIDEO_DIR"; backup_root="$VIDEO_BACKUP_DIR"
+    else
+      primary_dir="$TARGET_DIR"; backup_root="$BACKUP_DIR"
+    fi
 
     h="$(md5sum "$f" 2>/dev/null | cut -d' ' -f1)"
     [ -z "$h" ] && h="$(sha1sum "$f" 2>/dev/null | cut -d' ' -f1)"
@@ -378,8 +404,8 @@ main() {
     fi
     name="${token}-${year}${month}${day}-${numpad}.${ext}"
 
-    target="$TARGET_DIR/$SUBDIR/$name"
-    backup="$BACKUP_DIR/$SUBDIR/$name"
+    target="$primary_dir/$SUBDIR/$name"
+    backup="$backup_root/$SUBDIR/$name"
 
     if [ -e "$target" ]; then
       skip_count=$((skip_count + 1))
@@ -393,7 +419,7 @@ main() {
       prev="$(grep -F "$h" "$WORK_LEDGER" 2>/dev/null | tail -n 1)"
       if [ -n "$prev" ]; then
         prevrel="${prev#*$'\t'}"
-        if [ "$prevrel" != "$prev" ] && [ -e "$TARGET_DIR/$prevrel" ]; then
+        if [ "$prevrel" != "$prev" ] && { [ -e "$TARGET_DIR/$prevrel" ] || [ -e "$VIDEO_DIR/$prevrel" ]; }; then
           skip_count=$((skip_count + 1))
           log "skip     (already imported and still in library): $name"
           continue
@@ -403,17 +429,17 @@ main() {
 
     log "import   $name"
     log "         from: $f"
-    [ -n "$BACKUP_DIR" ] && log "         backup to: $BACKUP_DIR/$SUBDIR"
+    [ -n "$backup_root" ] && log "         backup to: $backup_root/$SUBDIR"
 
     if [ "$DRY_RUN" != yes ]; then
       mkdir -p "$(dirname -- "$target")"
       cp -p "$f" "$target"         || log "WARN: copy to target failed for $name"
-      if [ -n "$BACKUP_DIR" ]; then
+      if [ -n "$backup_root" ]; then
         mkdir -p "$(dirname -- "$backup")"
         [ -e "$backup" ] || cp -p "$f" "$backup" || log "WARN: backup copy failed for $name"
       fi
       [ "$used_counter" = yes ] && bump_counter "$key" "$((num + 1))"
-      [ -n "$h" ] && printf '%s\t%s\n' "$h" "${target#$TARGET_DIR/}" >>"$WORK_LEDGER"
+      [ -n "$h" ] && printf '%s\t%s\n' "$h" "${target#$primary_dir/}" >>"$WORK_LEDGER"
     fi
     copy_count=$((copy_count + 1))
   done < <(find "$SD_PATH" -type f "${name_args[@]}" 2>/dev/null | sort)

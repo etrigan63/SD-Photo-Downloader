@@ -13,14 +13,22 @@
 # Format: KEY=VALUE, one per line. Lines starting with # are comments.
 # Values may be wrapped in double or single quotes. "~/" is expanded.
 
-# Where imported photos/videos go. Date subfolders (see FOLDER_PATTERN) are
+# Where imported PHOTOS go. Date subfolders (see FOLDER_PATTERN) are
 # created under this directory automatically.
-TARGET_DIR=/home/guru/Pictures/photo-ingest
+TARGET_DIR=/home/guru/Pictures
 
-# Second destination: every imported file is also copied here under the same
-# date subfolder structure, with the same renamed filename as TARGET_DIR.
-# Leave empty to disable the backup copy.
-BACKUP_DIR=/home/guru/Videos/video-ingest
+# Where imported VIDEOS go (same date subfolder layout). Leave empty to
+# send videos to TARGET_DIR instead.
+VIDEO_DIR=/home/guru/Videos
+
+# Second destination for PHOTOS: a copy under the same date subfolder
+# structure, with the same renamed filename as TARGET_DIR. Leave empty to
+# disable the photo backup copy.
+BACKUP_DIR=/home/guru/Pictures/photo-ingest
+
+# Second destination for VIDEOS (analogue of BACKUP_DIR). Leave empty to
+# disable the video backup copy.
+VIDEO_BACKUP_DIR=/home/guru/Videos/video-ingest
 
 # Path to exiftool. If empty/unset, the script checks your PATH first,
 # then /usr/bin/vendor_perl/exiftool and /usr/bin/exiftool.
