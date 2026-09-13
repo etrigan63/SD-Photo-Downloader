@@ -22,6 +22,7 @@
 #
 # Linux port of the original macOS mac-photo-downloader:
 #   * card mounts detected under /media, /run/media or /mnt
+#   * unmounted removable cards are mounted automatically via udisks2
 #   * notifications via notify-send, eject via udisksctl/umount
 
 set -uo pipefail
@@ -214,9 +215,44 @@ load_config() {
 # ---------------------------------------------------------------------------
 # Locate the SD card
 # ---------------------------------------------------------------------------
-detect_card() {
-  local vol name count v found
+# Collect mounted volumes that hold a DCIM folder (card). Sets global COUNT
+# (number found) and FOUND (the single hit, if any).
+find_mounted_dcim() {
+  local v
+  COUNT=0; FOUND=""
+  # SD cards/readers typically mount under /media/$USER, /run/media/$USER
+  # or a manual mount under /mnt. Any of them counts if it holds a DCIM folder.
+  for v in /media/* /media/*/* /run/media/*/* /mnt/*; do
+    [ -d "$v" ] || continue
+    [ -L "$v" ] && continue
+    if find "$v" -maxdepth 2 -type d -iname DCIM -print -quit 2>/dev/null | grep -q .; then
+      COUNT=$((COUNT + 1)); FOUND="$v"
+    fi
+  done
+}
 
+# Mount any inserted-but-unmounted removable partitions through udisks2 so
+#	auto-detection can see the card. Best-effort: internal disks (non-removable)
+# are skipped, already-mounted parts are skipped, failures are only logged.
+mount_unmounted_removable() {
+  local dev mp fstype disk rm out
+  while IFS= read -r dev; do
+    [ -n "$dev" ] || continue
+    mp="$(lsblk -no MOUNTPOINT "/dev/$dev" 2>/dev/null)"
+    [ -n "$mp" ] && continue                       # already mounted
+    fstype="$(lsblk -no FSTYPE "/dev/$dev" 2>/dev/null)"
+    [ -n "$fstype" ] || continue                   # no filesystem, skip
+    disk="$(lsblk -no PKNAME "/dev/$dev" 2>/dev/null | head -n 1)"
+    [ -n "$disk" ] || continue
+    rm="$(lsblk -rno RM "/dev/$disk" 2>/dev/null | head -n 1)"
+    [ "${rm:-0}" = "1" ] || continue               # only removable drives
+    out="$(udisksctl mount -b "/dev/$dev" 2>&1)" \
+      || { log "WARN: could not mount /dev/$dev: $out"; continue; }
+    log "Mounted /dev/$dev"
+  done < <(lsblk -n -l -o KNAME,TYPE 2>/dev/null | awk '$2=="part" {print $1}')
+}
+
+detect_card() {
   if [ -n "$ARG_CARD" ]; then
     if [ -d "$ARG_CARD" ]; then
       SD_PATH="$ARG_CARD"
@@ -232,20 +268,20 @@ detect_card() {
     return 0
   fi
 
-  # SD cards/readers typically mount under /media/$USER, /run/media/$USER
-  # or a manual mount under /mnt. Any of them counts if it holds a DCIM folder.
-  count=0; found=""
-  for v in /media/* /media/*/* /run/media/*/* /mnt/*; do
-    [ -d "$v" ] || continue
-    [ -L "$v" ] && continue
-    if find "$v" -maxdepth 2 -type d -iname DCIM -print -quit 2>/dev/null | grep -q .; then
-      count=$((count + 1)); found="$v"
+  find_mounted_dcim
+  if [ "$COUNT" -eq 0 ]; then
+    if command -v udisksctl >/dev/null 2>&1; then
+      log "No mounted card found; looking for an unmounted removable device..."
+      mount_unmounted_removable
+      find_mounted_dcim
+    else
+      log "WARN: udisksctl not available; cannot auto-mount an inserted card"
     fi
-  done
+  fi
 
-  [ "$count" -eq 0 ] && die "no SD card found: no mounted volume has a DCIM folder"
-  [ "$count" -gt 1 ] && die "multiple SD cards found; pass one explicitly with --card (or drop it on a file-manager script)"
-  SD_PATH="$found"
+  [ "$COUNT" -eq 0 ] && die "no SD card found: no mounted volume has a DCIM folder"
+  [ "$COUNT" -gt 1 ] && die "multiple SD cards found; pass one explicitly with --card (or drop it on a file-manager script)"
+  SD_PATH="$FOUND"
 }
 
 
