@@ -153,8 +153,9 @@ fmt_subdir() {
     s="${s//%H/$hh}"
     s="${s//%M/$min}"
     s="${s//%S/$ss}"
-    [ -z "$s" ] && continue
-    SUBDIR="${SUBDIR}${SUBDIR:+/}$s"
+    # A segment with no digits left is an empty date expanding to bare dashes
+    # (e.g. "%Y-%m-%d" with no read date -> "--"); never turn that into a folder.
+    case "$s" in *[0-9]*) SUBDIR="${SUBDIR}${SUBDIR:+/}$s";; esac
   done
 }
 
