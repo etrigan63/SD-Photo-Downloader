@@ -61,7 +61,7 @@ Photo Downloader*.
 
 ## Configuration
 
-Edit `~/.sd-photo-downloader/config` (the format is `KEY=VALUE`, see
+Edit `~/.config/SD-Photo-Downloader/config` (the format is `KEY=VALUE`, see
 `config.example` for every option):
 
 | Key | Purpose |
@@ -93,7 +93,7 @@ sd-photo-download.sh --config /path/to/config
 sd-photo-download.sh --no-eject                        # import but keep the card mounted
 ```
 
-Progress is logged to `~/.sd-photo-downloader/run.log`.
+Progress is logged to `~/.config/SD-Photo-Downloader/run.log`.
 
 ## Desktop launcher (alternative to the command line)
 

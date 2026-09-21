@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------
 # Copy this file to a location of your choice and select it, or install it to:
 #
-#     ~/.sd-photo-downloader/config
+#     ~/.config/SD-Photo-Downloader/config
 #
 # The script looks for the config in this order:
 #   1. --config FILE on the command line
@@ -30,12 +30,13 @@ BACKUP_DIR=/home/guru/Pictures/photo-ingest
 # disable the video backup copy.
 VIDEO_BACKUP_DIR=/home/guru/Videos/video-ingest
 
-# Path to exiftool. If empty/unset, the script checks your PATH first,
-# then /usr/bin/vendor_perl/exiftool and /usr/bin/exiftool.
-EXIFTOOL=/usr/bin/vendor_perl/exiftool
+# Path to exiftool. Leave empty to use the one on your PATH (recommended).
+# Otherwise it must be an absolute path: the config dies if it is not
+# executable (e.g. NixOS has no /usr/bin/vendor_perl/exiftool).
+EXIFTOOL=
 
 # Where per-camera image-number counters and the run log are kept.
-STATE_DIR=~/.sd-photo-downloader
+STATE_DIR=~/.config/SD-Photo-Downloader
 
 # Subfolder pattern inside TARGET_DIR / BACKUP_DIR.
 # Supports exiftool style (%Y, %m, %d ...) and brace style ({YYYY}, ...).
@@ -77,7 +78,7 @@ VIDEO_EXTS="mp4 mov m4v avi mts m2ts 3gp mod"
 SD_CARD=auto
 
 # Log file for all runs. Defaults to $STATE_DIR/run.log.
-LOG_FILE=~/.sd-photo-downloader/run.log
+LOG_FILE=~/.config/SD-Photo-Downloader/run.log
 
 # Unmount the card when a run finishes successfully (via udisksctl, falling
 # back to umount). The --no-eject flag overrides this for a single run.

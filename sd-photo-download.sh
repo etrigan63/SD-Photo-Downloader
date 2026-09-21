@@ -18,7 +18,7 @@
 #   1. --config FILE
 #   2. $SD_CARD_DOWNLOADER_CONFIG
 #   3. ./config (next to this script)
-#   4. ~/.sd-photo-downloader/config
+#   4. ~/.config/SD-Photo-Downloader/config
 #
 # Linux port of the original macOS mac-photo-downloader:
 #   * card mounts detected under /media, /run/media or /mnt
@@ -35,7 +35,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 # ---------------------------------------------------------------------------
 CONFIG_FILE="${SD_CARD_DOWNLOADER_CONFIG:-}"
 [ -z "$CONFIG_FILE" ] && [ -f "$SCRIPT_DIR/config" ] && CONFIG_FILE="$SCRIPT_DIR/config"
-[ -z "$CONFIG_FILE" ] && CONFIG_FILE="$HOME/.sd-photo-downloader/config"
+[ -z "$CONFIG_FILE" ] && CONFIG_FILE="$HOME/.config/SD-Photo-Downloader/config"
 
 TARGET_DIR=""
 VIDEO_DIR=""
@@ -205,7 +205,7 @@ load_config() {
     else die "exiftool not found. Install it, e.g. sudo pacman -S perl-image-exiftool"; fi
   }
   [ -x "$EXIFTOOL" ] || die "exiftool not executable: $EXIFTOOL"
-  [ -n "$STATE_DIR" ] || STATE_DIR="$HOME/.sd-photo-downloader"
+  [ -n "$STATE_DIR" ] || STATE_DIR="$HOME/.config/SD-Photo-Downloader"
   [ -n "$LOG_FILE" ] || LOG_FILE="$STATE_DIR/run.log"
   [ "$COUNTER_DIGITS" -ge 1 ] 2>/dev/null || die "COUNTER_DIGITS must be >= 1"
   [ "$COUNTER_START" -ge 0 ] 2>/dev/null || die "COUNTER_START must be >= 0"

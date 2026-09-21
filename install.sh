@@ -3,7 +3,7 @@
 #
 # Installs SD Photo Downloader for the current user:
 #   * copies sd-photo-download to ~/.local/bin/
-#   * creates ~/.sd-photo-downloader/config from config.example on first run
+#   * creates ~/.config/SD-Photo-Downloader/config from config.example on first run
 #   * detects the installed file managers and wires up a right-click
 #     "SD Photo Downloader" action for each one found.
 #   * pins the "Computer" (all drives) entry into the GNOME Files sidebar
@@ -23,7 +23,7 @@ set -euo pipefail
 
 SRC_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
-DATA_DIR="$HOME/.sd-photo-downloader"
+DATA_DIR="$HOME/.config/SD-Photo-Downloader"
 
 SCRIPT_SOURCE="$SRC_DIR/sd-photo-download.sh"
 SCRIPT_DEST="$BIN_DIR/sd-photo-download"
@@ -31,18 +31,23 @@ SCRIPT_DEST="$BIN_DIR/sd-photo-download"
 # ---------------------------------------------------------------------------
 # 1. Copy the main script into ~/.local/bin
 # ---------------------------------------------------------------------------
-mkdir -p "$BIN_DIR"
+mkdir -p "$BIN_DIR" "$DATA_DIR"
 cp -f "$SCRIPT_SOURCE" "$SCRIPT_DEST"
 chmod +x "$SCRIPT_DEST"
 # Legacy layout (pre-2026) kept a copy under ~/.sd-photo-downloader; drop it so
 # no stale script lingers.
-rm -f "$DATA_DIR/sd-photo-download.sh"
+rm -f "$HOME/.sd-photo-downloader/sd-photo-download.sh"
 
 # ---------------------------------------------------------------------------
 # 2. Create the config from the example on first run
 # ---------------------------------------------------------------------------
 if [ ! -f "$DATA_DIR/config" ]; then
-  cp "$SRC_DIR/config.example" "$DATA_DIR/config"
+  if [ -f "$HOME/.sd-photo-downloader/config" ]; then
+    cp -f "$HOME/.sd-photo-downloader/config" "$DATA_DIR/config"
+    echo "Migrated existing config from ~/.sd-photo-downloader/config"
+  else
+    cp "$SRC_DIR/config.example" "$DATA_DIR/config"
+  fi
   echo "Created $DATA_DIR/config - edit TARGET_DIR/BACKUP_DIR before your first run."
 else
   echo "Keeping existing config: $DATA_DIR/config"
@@ -200,7 +205,7 @@ if [ "$NAUTILUS_FOUND" -eq 1 ]; then
   echo "  0. If the Files 'Scripts' menu is hidden, enable it with:"
   echo "     gsettings set org.gnome.nautilus.preferences show-scripts-menu true"
 fi
-echo "  1. Edit $DEST/config (set TARGET_DIR / BACKUP_DIR)"
+echo "  1. Edit $DATA_DIR/config (set TARGET_DIR / BACKUP_DIR)"
 echo "  2. Right-click the mounted card folder in your file manager ->"
 echo "     'SD Photo Downloader'"
 echo "  3. Test without writing anything:"
