@@ -2,9 +2,8 @@
 # install.sh
 #
 # Installs SD Photo Downloader for the current user:
-#   * copies sd-photo-download.sh to ~/.sd-photo-downloader/
+#   * copies sd-photo-download to ~/.local/bin/
 #   * creates ~/.sd-photo-downloader/config from config.example on first run
-#   * symlinks sd-photo-download into ~/.local/bin/ (if it exists)
 #   * detects the installed file managers and wires up a right-click
 #     "SD Photo Downloader" action for each one found.
 #   * pins the "Computer" (all drives) entry into the GNOME Files sidebar
@@ -23,35 +22,30 @@
 set -euo pipefail
 
 SRC_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
-DEST="$HOME/.sd-photo-downloader"
 BIN_DIR="$HOME/.local/bin"
+DATA_DIR="$HOME/.sd-photo-downloader"
 
 SCRIPT_SOURCE="$SRC_DIR/sd-photo-download.sh"
-SCRIPT_DEST="$DEST/sd-photo-download.sh"
+SCRIPT_DEST="$BIN_DIR/sd-photo-download"
 
 # ---------------------------------------------------------------------------
-# 1. Copy the main script
+# 1. Copy the main script into ~/.local/bin
 # ---------------------------------------------------------------------------
-mkdir -p "$DEST"
+mkdir -p "$BIN_DIR"
 cp -f "$SCRIPT_SOURCE" "$SCRIPT_DEST"
 chmod +x "$SCRIPT_DEST"
+# Legacy layout (pre-2026) kept a copy under ~/.sd-photo-downloader; drop it so
+# no stale script lingers.
+rm -f "$DATA_DIR/sd-photo-download.sh"
 
 # ---------------------------------------------------------------------------
 # 2. Create the config from the example on first run
 # ---------------------------------------------------------------------------
-if [ ! -f "$DEST/config" ]; then
-  cp "$SRC_DIR/config.example" "$DEST/config"
-  echo "Created $DEST/config - edit TARGET_DIR/BACKUP_DIR before your first run."
+if [ ! -f "$DATA_DIR/config" ]; then
+  cp "$SRC_DIR/config.example" "$DATA_DIR/config"
+  echo "Created $DATA_DIR/config - edit TARGET_DIR/BACKUP_DIR before your first run."
 else
-  echo "Keeping existing config: $DEST/config"
-fi
-
-# ---------------------------------------------------------------------------
-# 3. Convenience symlink on your PATH
-# ---------------------------------------------------------------------------
-if [ -d "$BIN_DIR" ]; then
-  ln -sf "$SCRIPT_DEST" "$BIN_DIR/sd-photo-download"
-  echo "Linked $BIN_DIR/sd-photo-download -> $SCRIPT_DEST"
+  echo "Keeping existing config: $DATA_DIR/config"
 fi
 
 # ---------------------------------------------------------------------------
@@ -103,7 +97,7 @@ Actions=SDPhotoDownloader;
 [Desktop Action SDPhotoDownloader]
 Name=SD Photo Downloader
 Icon=media-optical
-Exec=bash -c 'exec "$HOME/.sd-photo-downloader/sd-photo-download.sh" --card "$1"' _ %f
+Exec=bash -c 'exec "$HOME/.local/bin/sd-photo-download" --card "$1"' _ %f
 EOF
   chmod +x "$file"
   echo "Installed Dolphin service menu to: $file"
@@ -128,7 +122,7 @@ install_thunar() {
 	<action>
 		<icon>media-optical</icon>
 		<name>SD Photo Downloader</name>
-		<command>bash -lc 'exec "$HOME/.sd-photo-downloader/sd-photo-download.sh" --card "$1"' dummy %f</command>
+		<command>bash -lc 'exec "$HOME/.local/bin/sd-photo-download" --card "$1"' dummy %f</command>
 		<description>Import photos and videos from the mounted SD card</description>
 		<patterns>*</patterns>
 		<directories/>

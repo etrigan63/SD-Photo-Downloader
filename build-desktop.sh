@@ -14,7 +14,7 @@
 set -euo pipefail
 
 SRC_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
-SCRIPT="$HOME/.sd-photo-downloader/sd-photo-download.sh"
+SCRIPT="$HOME/.local/bin/sd-photo-download"
 DEST_DIR="${1:-$HOME/.local/share/applications}"
 
 [ -x "$SCRIPT" ] || {

@@ -38,10 +38,9 @@ All features are preserved; the macOS-specific parts (Automator workflow,
 ./install.sh
 ```
 
-This copies the script to `~/.sd-photo-downloader/`, creates a config from
-`config.example` (edit it first!), and symlinks `sd-photo-download` into
-`~/.local/bin/` if present. It then detects your installed file managers and
-wires up a right-click **SD Photo Downloader** action for each one:
+This copies the script to `~/.local/bin/sd-photo-download`, creates a config
+from `config.example` (edit it first!), and then detects your installed file
+managers and wires up a right-click **SD Photo Downloader** action for each one:
 
 | File manager | Integration |
 |---|---|
@@ -116,7 +115,7 @@ The most reliable way to trigger the import from a Stream Deck button is a
 terminal command, e.g. a button running:
 
 ```sh
-bash /home/guru/.sd-photo-downloader/sd-photo-download.sh
+bash /home/guru/.local/bin/sd-photo-download
 ```
 
 The script reports its own status via notify-send, so you get feedback
