@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # build-desktop.sh [DEST_DIR]
 #
 # Builds a double-clickable "SD Photo Downloader" desktop launcher, the Linux
@@ -30,7 +30,7 @@ Type=Application
 Version=1.0
 Name=SD Photo Downloader
 Comment=Import photos and videos from a mounted SD card
-Exec=/bin/bash -lc '${SCRIPT}; exec bash'
+Exec=bash -lc '${SCRIPT}; exec bash'
 Icon=camera-photo
 Terminal=true
 Categories=Graphics;AudioVideo;

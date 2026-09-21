@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # sd-photo-download.sh
 #
 # Download photos/videos from a mounted SD card into a photo library.

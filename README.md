@@ -116,7 +116,7 @@ The most reliable way to trigger the import from a Stream Deck button is a
 terminal command, e.g. a button running:
 
 ```sh
-/bin/bash /home/guru/.sd-photo-downloader/sd-photo-download.sh
+bash /home/guru/.sd-photo-downloader/sd-photo-download.sh
 ```
 
 The script reports its own status via notify-send, so you get feedback

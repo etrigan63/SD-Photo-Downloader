@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # install.sh
 #
 # Installs SD Photo Downloader for the current user:
@@ -66,7 +66,7 @@ install_script_based() {  # <label> <scripts-dir>
   mkdir -p "$dir"
   file="$dir/SD Photo Downloader"
   cat > "$file" <<EOF
-#!/bin/bash
+#!/usr/bin/env bash
 # Right-click a mounted SD card folder -> Scripts -> SD Photo Downloader.
 # Selections are resolved to absolute paths and passed to the importer.
 # With no selection (e.g. right-clicking a device icon in Other Locations,
