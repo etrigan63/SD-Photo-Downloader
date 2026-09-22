@@ -54,6 +54,10 @@ SD_CARD="auto"
 LOG_FILE=""
 EJECT_CARD=yes
 NOTIFY=yes
+PROGRESS=yes
+PROG_ON=no
+PROG_PID=""
+PROG_FIFO=""
 
 DRY_RUN=no
 NO_EJECT=no
@@ -76,7 +80,42 @@ notify() {
   notify-send -a "SD Photo Downloader" "SD Photo Downloader" "$msg" 2>/dev/null || true
 }
 
-die() { log "ERROR: $*" >&2; notify "Failed: $*"; exit 1; }
+# Live progress window fed through a fifo into zenity --progress. zenity reads
+# an integer percentage and "# text" label lines; we write to fd 3 and let
+# bash handle the pipe. Enabled only by PROGRESS=yes and only in real (not
+# dry-run) transfers; silently disabled when zenity is missing.
+progress_open() { # total-files
+  [ "$PROGRESS" = yes ] || return 0
+  [ "$DRY_RUN" = yes ] && return 0
+  command -v zenity >/dev/null 2>&1 || { log "WARN: zenity not found; no progress window"; return 0; }
+  [ "${1:-0}" -gt 0 ] 2>/dev/null || return 0   # nothing to do, no window
+  local fifo
+  fifo="$(mktemp -u)"
+  mkfifo "$fifo" 2>/dev/null || return 0
+  trap '' PIPE
+  zenity --progress --auto-close --no-cancel --title="SD Photo Downloader" \
+         --text="Preparing..." --percentage=0 --width=420 --height=120 <"$fifo" &
+  PROG_PID=$!
+  exec 3>"$fifo"
+  PROG_FIFO="$fifo"
+  rm -f "$fifo"
+}
+
+progress_update() { # percent label
+  [ -n "$PROG_FIFO" ] || return 0
+  printf '%s\n# %s\n' "$1" "$2" >&3 2>/dev/null || true
+}
+
+progress_close() { # percent label
+  [ -n "$PROG_FIFO" ] || return 0
+  printf '100\n# %s\n' "${1:-Finished.}" >&3 2>/dev/null
+  exec 3>&- 2>/dev/null
+  PROG_FIFO=""
+  # Wait briefly so the label is still readable before zenity exits.
+  [ -n "$PROG_PID" ] && wait "$PROG_PID" 2>/dev/null
+}
+
+die() { log "ERROR: $*" >&2; notify "Failed: $*"; progress_close "Failed: $*"; exit 1; }
 
 expand_home() { case "$1" in "~/"*) printf '%s/%s' "$HOME" "${1#\~/}";; *) printf '%s' "$1";; esac; }
 
@@ -192,6 +231,7 @@ load_config() {
       EJECT_CARD)         case "$val" in yes|YES|true|1) EJECT_CARD=yes;; *) EJECT_CARD=no;; esac;;
       LOG_FILE)           LOG_FILE="$(expand_home "$val")";;
       NOTIFY)             case "$val" in yes|YES|true|1) NOTIFY=yes;; *) NOTIFY=no;; esac;;
+      PROGRESS)           case "$val" in yes|YES|true|1) PROGRESS=yes;; *) PROGRESS=no;; esac;;
     esac
   done <"$CONFIG_FILE"
 
@@ -368,6 +408,7 @@ main() {
   local f ext h exif_dt year month day hh min ss model
   local token key num numpad name target backup copy_count skip_count
   local exifnum used_counter prev prevrel primary_dir backup_root
+  local files=() total i cur
   copy_count=0; skip_count=0
 
   cd "$HOME" || true   # cd out of the mount path so the card can be unmounted
@@ -406,7 +447,18 @@ main() {
   log "Scanning for photos/videos..."
   notify "Importing from $(basename "$SD_PATH")..."
 
-  while IFS= read -r f; do
+  # Collect the (sorted) file list up front so we can show a progress window
+  # with a real total. Piped through an array keeps names with spaces intact.
+  while IFS= read -r f; do files+=("$f"); done \
+    < <(find "$SD_PATH" -type f "${name_args[@]}" 2>/dev/null | sort)
+  total="${#files[@]}"
+  progress_open "$total"
+
+  i=0
+  for f in "${files[@]}"; do
+    i=$((i + 1))
+    cur="$((i * 100 / total))"
+    progress_update "$cur" "[$i/$total] $(basename -- "$f")"
     ext="${f##*.}"; ext="$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')"
 
     # Route by type: photos -> TARGET_DIR, videos -> VIDEO_DIR. Backup copy
@@ -485,8 +537,9 @@ main() {
       [ -n "$h" ] && printf '%s\t%s\n' "$h" "${target#$primary_dir/}" >>"$WORK_LEDGER"
     fi
     copy_count=$((copy_count + 1))
-  done < <(find "$SD_PATH" -type f "${name_args[@]}" 2>/dev/null | sort)
+  done
 
+  progress_close "[$total/$total] Done: $copy_count imported, $skip_count skipped."
   if [ "$DRY_RUN" = yes ]; then rm -rf "$WORK_STATE"; fi
 
   log "Done: $copy_count imported, $skip_count already present."

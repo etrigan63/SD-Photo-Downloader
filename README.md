@@ -79,6 +79,7 @@ Edit `~/.config/SD-Photo-Downloader/config` (the format is `KEY=VALUE`, see
 | `SD_CARD` | `auto`, or a fixed mount point like `/run/media/guru/CANON` |
 | `EJECT_CARD` | Unmount the card when done (`yes`/`no`, override with `--no-eject`) |
 | `NOTIFY` | Desktop notifications via notify-send: started, result, errors (`yes`/`no`) |
+| `PROGRESS` | Live progress window via zenity while files transfer (`yes`/`no`, default `yes`) |
 
 Files with no usable EXIF date use the file's modification date; files with no
 camera model get `UNKNOWN`.
@@ -107,7 +108,9 @@ macOS `build-app.sh`):
 This writes `~/.local/share/applications/sd-photo-download.desktop`. You can
 launch it from your app launcher, or point a Stream Deck / custom launcher
 button at the terminal command. Status banners appear via notify-send (see
-`NOTIFY` above), so you get feedback without watching a terminal.
+`NOTIFY` above), and if `zenity` is installed a live progress window shows the
+transfer as it happens (see `PROGRESS`), so you get feedback without watching a
+terminal.
 
 ## Stream Deck
 

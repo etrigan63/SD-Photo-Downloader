@@ -88,3 +88,7 @@ EJECT_CARD=yes
 # Handy when triggered from a file-manager script or launcher with no
 # visible terminal.
 NOTIFY=yes
+
+# Show a live progress window (zenity) while files are being transferred.
+# Falls back to notifications only if zenity is not installed.
+PROGRESS=yes
